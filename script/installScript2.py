@@ -12,6 +12,8 @@ import tarfile
 import zipfile
 from subprocess import call
 import shutil
+import stat
+import multiprocessing
 
 
 def schedule(a, b, c):
@@ -55,8 +57,7 @@ def addconfigurationvalue(filename):
 
 
 def start_elasticsearch(filename):
-    os.system("echo \"hello world\"")
-    os.system(fileName + "/bin/elasticsearch")
+    os.system(fileName + "/bin/elasticsearch -Des.insecure.allow.root=true")
 
 
 def copy_elasticsearch(filename, targetfilename):
@@ -65,7 +66,7 @@ def copy_elasticsearch(filename, targetfilename):
 
 
 def install_plugins(filename):
-    os.system(filename + "/bin/plugin install head")
+    os.system(filename + "/bin/plugin install mobz/elasticsearch-head")
 
 
 def download_elasticsearch():
@@ -74,6 +75,11 @@ def download_elasticsearch():
     local = os.path.join('./', 'elasticsearch-2.4.6.zip')
     if not os.path.exists(fileZipName):
         print urllib.urlretrieve(url, local, schedule)
+
+
+def add_authority(filename):
+    os.chmod(filename + "/bin/elasticsearch", stat.S_IRWXU)
+    os.chmod(filename + "/bin/plugin", stat.S_IRWXU)
 
 
 if __name__ == '__main__':
@@ -85,9 +91,9 @@ if __name__ == '__main__':
 
     if not os.path.exists(fileName):
         unzip_file(fileZipName, "./")
-
-    addconfigurationvalue(fileName)
-    start_elasticsearch(fileName)
+        addconfigurationvalue(fileName)
+        add_authority(fileName)
+        install_plugins(fileName)
 
     fileName2 = fileName + "-2"
     fileName3 = fileName + "-3"
@@ -95,3 +101,11 @@ if __name__ == '__main__':
         copy_elasticsearch(fileName, fileName2);
     if not os.path.exists(fileName3):
         copy_elasticsearch(fileName, fileName3);
+
+    p1 = multiprocessing.Process(target=start_elasticsearch, args=(fileName,))
+    p2 = multiprocessing.Process(target=start_elasticsearch, args=(fileName2,))
+    p3 = multiprocessing.Process(target=start_elasticsearch, args=(fileName3,))
+    p1.start()
+    p2.start()
+    p3.start()
+
