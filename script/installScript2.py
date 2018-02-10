@@ -132,7 +132,10 @@ def transfer(filename, ipaddress, password):
 
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    ssh.connect(ipaddress, 22, "root", password)
+    try:
+        ssh.connect(ipaddress, 22, "root", password)
+    except:
+        print "can't connect to the server,please check your server or password"
 
     stdin, stdout, stdeer = ssh.exec_command("ls")
 
@@ -148,6 +151,9 @@ def transfer(filename, ipaddress, password):
         print "server ip:" + ipaddress + " already run elasticsearch"
 
     ssh.close()
+    if os.path.exists("./" + filename.split("/")[1] + ".zip"):
+        os.remove("./" + filename.split("/")[1] + ".zip")
+    shutil.rmtree("./" + filename)
 
 
 def check_elasticsearch_process(ssh):
@@ -210,7 +216,6 @@ if __name__ == '__main__':
         install_plugins(fileName)
 
     if not os.path.exists(serverConfig):
-
         fileName2 = fileName + "-2"
         fileName3 = fileName + "-3"
         if not os.path.exists(fileName2):
@@ -219,16 +224,19 @@ if __name__ == '__main__':
             copy_elasticsearch(fileName, fileName3);
 
         p1 = multiprocessing.Process(target=start_elasticsearch, args=(fileName,))
+        p1.start()
         p2 = multiprocessing.Process(target=start_elasticsearch, args=(fileName2,))
         p3 = multiprocessing.Process(target=start_elasticsearch, args=(fileName3,))
-        p1.start()
+
         p2.start()
         p3.start()
 
     else:
-        lock = multiprocessing.Lock()
+        # p1 = multiprocessing.Process(target=start_elasticsearch, args=(fileName,))
+        # p1.start()
+
         line_data = read_ipaddress(serverConfig)
         for i, line in enumerate(line_data):
             copy_file_name = copy_elasticsearch(fileName, fileName + '-' + str(i))
-            p1 = MultiProcess(copy_file_name, line.split(" ")[0], line.split(" ")[1])
-            p1.start()
+            p = MultiProcess(copy_file_name, line.split(" ")[0].strip(), line.split(" ")[1].strip())
+            p.start()
