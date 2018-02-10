@@ -109,17 +109,18 @@ def add_authority(filename):
 
 
 class MultiProcess(multiprocessing.Process):
-    def __init__(self, filename, ipaddress, password):
+    def __init__(self, filename, ipaddress, password, lock):
         multiprocessing.Process.__init__(self)
         self.filename = filename
         self.ipaddress = ipaddress
         self.password = password
+        self.lock = lock
 
     def run(self):
         print 'filename:' + self.filename
         print 'ipaddress:' + self.ipaddress
         print 'password:' + self.password
-        transfer(self.filename, self.ipaddress, self.password)
+        transfer(self.filename, self.ipaddress, self.password, self.lock)
 
 
 def read_ipaddress(serverconfig):
@@ -127,27 +128,28 @@ def read_ipaddress(serverconfig):
         return f.readlines()
 
 
-def transfer(filename, ipaddress, password):
-    ssh = paramiko.SSHClient()
+def transfer(filename, ipaddress, password, lock):
+    with lock:
+        ssh = paramiko.SSHClient()
 
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    ssh.connect(ipaddress, 22, "root", password)
+        ssh.connect(ipaddress, 22, "root", password)
 
-    stdin, stdout, stdeer = ssh.exec_command("ls")
+        stdin, stdout, stdeer = ssh.exec_command("ls")
 
-    print stdout.readlines()
+        print stdout.readlines()
 
-    not_exist = check_elasticsearch_process(ssh)
+        not_exist = check_elasticsearch_process(ssh)
 
-    print "whether or not elasticsearch services is running:" + str(not_exist)
+        print "whether or not elasticsearch services is running:" + str(not_exist)
 
-    if not_exist:
-        start_remote_elasticsearch(ssh, filename, ipaddress)
-    else:
-        print "server ip:" + ipaddress + " already run elasticsearch"
+        if not_exist:
+            start_remote_elasticsearch(ssh, filename, ipaddress)
+        else:
+            print "server ip:" + ipaddress + " already run elasticsearch"
 
-    ssh.close()
+        ssh.close()
 
 
 def check_elasticsearch_process(ssh):
@@ -201,6 +203,8 @@ if __name__ == '__main__':
     fileName = "./elasticsearch-2.4.6"
     serverConfig = "./config.txt"
 
+    lock = multiprocessing.Lock()
+
     download_elasticsearch()
 
     if not os.path.exists(fileName):
@@ -226,9 +230,12 @@ if __name__ == '__main__':
         p3.start()
 
     else:
-        lock = multiprocessing.Lock()
+
         line_data = read_ipaddress(serverConfig)
         for i, line in enumerate(line_data):
             copy_file_name = copy_elasticsearch(fileName, fileName + '-' + str(i))
-            p1 = MultiProcess(copy_file_name, line.split(" ")[0], line.split(" ")[1])
+            # p1 = MultiProcess(copy_file_name, line.split(" ")[0], line.split(" ")[1], lock)
+            # p1.start()
+            p1 = multiprocessing.Process(target=transfer,
+                                         args=(copy_file_name, line.split(" ")[0], line.split(" ")[1], lock))
             p1.start()

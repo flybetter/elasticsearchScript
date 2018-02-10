@@ -55,5 +55,5 @@ if __name__ == '__main__':
 
     # transfer_ftp("1", "192.168.105.234", "doucare")
 
-   aa =test_ps("192.168.105.234", "doucare")
+   aa =test_ps("202.102.94.172", "doucare")
    print not aa
