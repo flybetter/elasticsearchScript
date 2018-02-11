@@ -76,8 +76,11 @@ def zip_dir(dirname, zipfilename):
 
 
 def addconfigurationvalue(filename):
+    result = add_cluster_ip()
     with open(filename + "/config/elasticsearch.yml", "a") as f:
         f.write("network.host: 0.0.0.0")
+        f.write("\n")
+        f.write(result)
 
 
 def start_elasticsearch(filename):
@@ -209,6 +212,16 @@ def start_multielasticsearch(filename, ipaddress, password, username):
     print stdout.readlines()
 
 
+def add_cluster_ip():
+    result = r'discovery.zen.ping.unicast.hosts: ["127.0.0.1"'
+    with open("../config.txt") as f:
+        for line in f:
+            result += r',"' + line.strip().split(" ")[0] + '"'
+    result += ']'
+    print "ipaddress :" + result
+    return result
+
+
 if __name__ == '__main__':
 
     global dirname
@@ -249,9 +262,8 @@ if __name__ == '__main__':
         p3.start()
 
     else:
-        # p1 = multiprocessing.Process(target=start_elasticsearch, args=(fileName,))
-        # p1.start()
-
+        p1 = multiprocessing.Process(target=start_elasticsearch, args=(fileName,))
+        p1.start()
         line_data = read_ipaddress(serverConfig)
         for i, line in enumerate(line_data):
             copy_file_name = copy_elasticsearch(fileName, fileName + '-' + str(i))

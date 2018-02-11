@@ -46,8 +46,18 @@ def test_ps(ipaddress, password):
     stdin, stdout, stdeer = ssh.exec_command("ps -ef|grep elasticsearch|grep -v grep")
     print len(stdout.read())
 
+    return len(stdout.read()) == 0
 
-    return  len(stdout.read()) == 0
+
+def test_config():
+    result = r'discovery.zen.ping.unicast.hosts: ["127.0.0.1"'
+    with open("config.txt") as f:
+        for line in f:
+            result += r',"' + line.strip().split(" ")[0] + '"'
+
+    result += ']'
+
+    print "result:" + result
 
 
 if __name__ == '__main__':
@@ -55,5 +65,6 @@ if __name__ == '__main__':
 
     # transfer_ftp("1", "192.168.105.234", "doucare")
 
-   aa =test_ps("192.168.105.234", "doucare")
-   print not aa
+    # aa =test_ps("192.168.105.234", "doucare")
+    # print not aa
+    test_config()

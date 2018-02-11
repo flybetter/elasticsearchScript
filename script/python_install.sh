@@ -73,6 +73,9 @@ checkPython(){
         pip_install
         installParamiko
     fi
+
+    echo "Finished. Well done!"
+    echo "If 'python -V' still shows the old version, you may need to re-login."
 }
 # 调用函数检查GCC
 checkGCC
