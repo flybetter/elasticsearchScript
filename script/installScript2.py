@@ -141,6 +141,9 @@ def transfer(filename, ipaddress, password):
 
     print stdout.readlines()
 
+    if dirname not in stdout.readlines():
+        ssh.exec_command(" mkdir " + dirname)
+
     not_exist = check_elasticsearch_process(ssh)
 
     print "whether or not elasticsearch services is running:" + str(not_exist)
@@ -150,7 +153,12 @@ def transfer(filename, ipaddress, password):
     else:
         print "server ip:" + ipaddress + " already run elasticsearch"
 
+    clean(filename)
+
     ssh.close()
+
+
+def clean(filename):
     if os.path.exists("./" + filename.split("/")[1] + ".zip"):
         os.remove("./" + filename.split("/")[1] + ".zip")
     shutil.rmtree("./" + filename)
@@ -170,13 +178,13 @@ def start_remote_elasticsearch(ssh, filename, ipaddress):
 
     sftp.put(filenamezip, filenamezip)
 
-    ssh.exec_command("nohup unzip " + filenamezip)
+    ssh.exec_command("nohup unzip " + filenamezip + " -d " + dirname)
 
-    time.sleep(10)
+    time.sleep(5)
 
-    ssh.exec_command("chmod 777 ./bin/elasticsearch")
+    ssh.exec_command("chmod 777 ./" + dirname + "/bin/elasticsearch")
 
-    ssh.exec_command("nohup ./bin/elasticsearch -Des.insecure.allow.root=true")
+    ssh.exec_command("nohup ./" + dirname + "/bin/elasticsearch -Des.insecure.allow.root=true")
 
     print "server ip:" + ipaddress + " installed elasticsearch successful"
 
@@ -203,9 +211,18 @@ def start_multielasticsearch(filename, ipaddress, password, username):
 
 if __name__ == '__main__':
 
+    global dirname
+
+    dirname = "elasticsearch_dir"
+
+    if not os.path.exists(dirname):
+        os.mkdir(dirname)
+
+    os.chdir(dirname)
+
     fileZipName = "./elasticsearch-2.4.6.zip"
     fileName = "./elasticsearch-2.4.6"
-    serverConfig = "./config.txt"
+    serverConfig = "../config.txt"
 
     download_elasticsearch()
 
