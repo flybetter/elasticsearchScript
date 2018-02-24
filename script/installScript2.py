@@ -81,6 +81,7 @@ def addconfigurationvalue(filename):
         f.write("network.host: 0.0.0.0")
         f.write("\n")
         f.write(result)
+        f.write("node.max_local_storage_nodes: 1 ")
 
 
 def start_elasticsearch(filename):
@@ -136,29 +137,38 @@ def transfer(filename, ipaddress, password):
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     try:
-        ssh.connect(ipaddress, 22, "root", password)
+        ssh.connect(ipaddress.replace("#", ""), 22, "root", password)
     except:
         print "can't connect to the server,please check your server or password"
 
-    stdin, stdout, stdeer = ssh.exec_command("ls")
+    stdin, stdout, stdeer = ssh.exec_command("ls " + dirname)
 
-    print stdout.readlines()
+    print stdout.readline()
 
-    if dirname not in stdout.readlines():
+    if stdout.readline() == '':
         ssh.exec_command(" mkdir " + dirname)
 
     not_exist = check_elasticsearch_process(ssh)
 
     print "whether or not elasticsearch services is running:" + str(not_exist)
 
-    if not_exist:
+    if not_exist and not ipaddress.startswith('#'):
         start_remote_elasticsearch(ssh, filename, ipaddress)
     else:
-        print "server ip:" + ipaddress + " already run elasticsearch"
+
+        if ipaddress.startswith("#"):
+            kill_elasticsearch(ssh, ipaddress)
+        else:
+            print "server ip:" + ipaddress + " already run elasticsearch"
 
     clean(filename)
 
     ssh.close()
+
+
+def kill_elasticsearch(ssh, ipaddress, ):
+    ssh.exec_command("kill -9 $(ps -ef|grep elasticsearch |grep -v grep|awk '{print $2}')")
+    print "server ip:" + ipaddress + " close the elasticsearch"
 
 
 def clean(filename):
@@ -175,17 +185,22 @@ def check_elasticsearch_process(ssh):
 def start_remote_elasticsearch(ssh, filename, ipaddress):
     sftp = ssh.open_sftp()
 
-    filenamezip = zip_dir(filename, filename.split("/")[1] + ".zip")
+    stdin, stdout, stdeer = ssh.exec_command("ls " + dirname)
 
-    print "filenamezip :" + filenamezip
+    print stdout.readline()
 
-    sftp.put(filenamezip, filenamezip)
+    if stdout.readline() == '':
+        filenamezip = zip_dir(filename, filename.split("/")[1] + ".zip")
 
-    ssh.exec_command("nohup unzip " + filenamezip + " -d " + dirname)
+        print "filenamezip :" + filenamezip
 
-    time.sleep(5)
+        sftp.put(filenamezip, filenamezip)
 
-    ssh.exec_command("chmod 777 ./" + dirname + "/bin/elasticsearch")
+        ssh.exec_command("nohup unzip " + filenamezip + " -d " + dirname)
+
+        time.sleep(10)
+
+        ssh.exec_command("chmod 777 ./" + dirname + "/bin/elasticsearch")
 
     ssh.exec_command("nohup ./" + dirname + "/bin/elasticsearch -Des.insecure.allow.root=true")
 
@@ -262,8 +277,8 @@ if __name__ == '__main__':
         p3.start()
 
     else:
-        p1 = multiprocessing.Process(target=start_elasticsearch, args=(fileName,))
-        p1.start()
+        # p1 = multiprocessing.Process(target=start_elasticsearch, args=(fileName,))
+        # p1.start()
         line_data = read_ipaddress(serverConfig)
         for i, line in enumerate(line_data):
             copy_file_name = copy_elasticsearch(fileName, fileName + '-' + str(i))
